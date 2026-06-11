@@ -355,3 +355,235 @@ def renderizar_dossie(
     caminho.write_text(html, encoding="utf-8")
     logger.info("Dossiê HTML gerado: %s", caminho)
     return caminho
+
+
+# =========================================================================== #
+# Guia didático — passo a passo cronológico de uma execução
+# =========================================================================== #
+# Cada passo: o que acontece, qual arquivo/função faz, e onde está a robustez.
+PASSOS = [
+    {
+        "n": 0,
+        "titulo": "O gatilho — você (ou o robô) dispara um comando",
+        "arquivo": "__main__.py",
+        "funcao": "main() → _parse() → _configurar_logging()",
+        "oque": "Tudo começa com 'python -m pim_report --periodo last'. O __main__ lê o argumento "
+        "--periodo ('last' = mês mais recente, ou AAAAMM), liga o logging (arquivo + console) e "
+        "chama o pipeline. No dia da divulgação, quem digita o comando é o cron do GitHub Actions.",
+        "robustez": "Entrypoint único e idempotente; logging ativo desde o primeiro instante, "
+        "gravando em output/pim_report.log.",
+    },
+    {
+        "n": 1,
+        "titulo": "A batuta da orquestra",
+        "arquivo": "pipeline.py",
+        "funcao": "gerar_nota()",
+        "oque": "É o maestro: chama, em ordem, coleta → cache → validação → transformação → "
+        "narrativa → gráficos → PDF → HTML. Toda a sequência vive dentro de um try/except/finally.",
+        "robustez": "O try/except/finally foi escrito ANTES da lógica feliz (Martin, princípio 2). "
+        "O except captura PimReportError, registra com stack trace e re-levanta; o finally sempre "
+        "loga o fim — nada termina em silêncio.",
+    },
+    {
+        "n": 2,
+        "titulo": "Perguntar ao IBGE qual é o mês mais recente",
+        "arquivo": "sidra_client.py  (+ pipeline._ultimo_periodo_disponivel)",
+        "funcao": "SidraClient.buscar_tabela(periodo='last')",
+        "oque": "Monta a URL da API e faz um GET. A URL /values/t/8888/n1/all/v/.../p/last/c544/all "
+        "significa: tabela 8888, nível Brasil, variáveis pedidas, último período, classificação 544 "
+        "(seções/atividades), todas as categorias. A resposta é uma lista JSON cujo 1º item é o "
+        "cabeçalho de rótulos.",
+        "robustez": "Timeout explícito em toda requisição; tenacity re-tenta com backoff exponencial "
+        "SÓ erros transitórios (conexão/timeout e HTTP 5xx). Timeout→SidraConnectionError, "
+        "5xx→SidraHTTPError, JSON inválido→SidraPayloadError, vazio→SidraEmptyError. Nenhum erro de "
+        "'requests' vaza para fora do wrapper.",
+    },
+    {
+        "n": 3,
+        "titulo": "Esse mês já saiu? (o caso especial)",
+        "arquivo": "pipeline.py  +  special_cases.py",
+        "funcao": "PeriodoNaoPublicado",
+        "oque": "Se você pediu um mês específico que ainda não foi divulgado (pedido > mais recente), "
+        "a esteira NÃO inventa nem usa mês velho: devolve o objeto PeriodoNaoPublicado, loga o aviso "
+        "e encerra com código 2, sem gerar PDF.",
+        "robustez": "Special Case pattern (Fowler / Martin princípio 6): o caso 'não publicado' é um "
+        "objeto explícito, não um None nem um if espalhado. O caminho feliz fica limpo.",
+    },
+    {
+        "n": 4,
+        "titulo": "Coletar os três conjuntos de dados",
+        "arquivo": "pipeline.py",
+        "funcao": "coletar_pacote()",
+        "oque": "Faz 3 consultas: (a) ATIVIDADES — tabela 8888, último mês, todas as categorias, as 5 "
+        "variáveis (4 leituras + índice dessazonalizado); (b) SÉRIE — tabela 8888, indústria geral, só "
+        "o índice dessazonalizado, nos últimos 36 meses (para o gráfico de linha); (c) CATEGORIAS — "
+        "tabela 8887, grandes categorias econômicas, as 4 leituras. Junta tudo num 'pacote' (dict).",
+        "robustez": "Cada consulta passa pelo mesmo wrapper robusto do passo 2.",
+    },
+    {
+        "n": 5,
+        "titulo": "Guardar uma cópia crua (a rede de segurança)",
+        "arquivo": "cache.py",
+        "funcao": "salvar_bruto()  /  carregar_mais_recente()",
+        "oque": "O pacote cru é gravado em data/raw/AAAA-MM-DD.json a cada execução.",
+        "robustez": "É a peça-chave do MODO DE DEGRADAÇÃO: se a API estiver fora do ar, o pipeline "
+        "chama carregar_mais_recente(), usa o cache mais recente e marca de_cache=True (que vira um "
+        "aviso destacado no PDF/HTML). Se nem cache existir, levanta CacheVazioError — falha clara, "
+        "não um PDF vazio.",
+    },
+    {
+        "n": 6,
+        "titulo": "Conferir se o formato é o esperado (falhar cedo)",
+        "arquivo": "schema.py",
+        "funcao": "validar_bruto()  (chamada dentro de transform.montar_dataframe)",
+        "oque": "Antes de calcular qualquer coisa, o pandera confere se as colunas (V, D2C, D3C, D4C…) "
+        "existem e têm o tipo certo.",
+        "robustez": "Se o IBGE mudar o layout, a esteira para AQUI com SchemaValidationError (dizendo "
+        "qual coluna sumiu) — em vez de gerar números errados silenciosamente.",
+    },
+    {
+        "n": 7,
+        "titulo": "Transformar texto em números e leituras",
+        "arquivo": "transform.py",
+        "funcao": "construir_dados() → montar_dataframe(), _item_de(), _destaques(), _serie_dessaz()",
+        "oque": "Descarta a linha de cabeçalho, converte o campo V (texto, ex. '0,7') em número, "
+        "tratando ausências ('...', '-') como NaN. Depois filtra por variável/categoria/período para "
+        "montar: as 4 leituras da indústria geral, as seções (extrativa × transformação), as grandes "
+        "categorias econômicas, as maiores altas/baixas entre atividades e a série de 36 meses.",
+        "robustez": "Ausência de dado vira NaN (um float), nunca None (princípios 1, 7, 8). Categoria "
+        "faltando no período → TransformError com contexto.",
+    },
+    {
+        "n": 8,
+        "titulo": "Escrever a história por trás do número",
+        "arquivo": "analysis.py",
+        "funcao": "gerar_narrativa()",
+        "oque": "Gera manchete, subtítulo, parágrafo de contexto e os textos de destaques. Tudo por "
+        "REGRAS FIXAS sobre os sinais e as magnitudes (ex.: alta no mês + queda em 12 meses → frase de "
+        "'recuperação sobre base fraca'). É determinístico: mesmos dados → mesmo texto, sem invenção.",
+        "robustez": "Não gera narrativa para um resultado não publicado (checa .publicado).",
+    },
+    {
+        "n": 9,
+        "titulo": "Desenhar os gráficos",
+        "arquivo": "charts.py",
+        "funcao": "gerar_graficos()",
+        "oque": "Cria 2 figuras com matplotlib: a linha do índice dessazonalizado (36 meses) e as "
+        "barras de variação mensal das categorias (verde = alta, vermelho = queda). Salva cada uma em "
+        "PDF (vetorial, para o LaTeX) e PNG (para embutir nos HTML).",
+        "robustez": "Backend 'Agg' (sem tela) — funciona em servidor/CI sem ambiente gráfico.",
+    },
+    {
+        "n": 10,
+        "titulo": "Montar e compilar o PDF em LaTeX",
+        "arquivo": "render_latex.py  +  templates/nota.tex.j2",
+        "funcao": "renderizar_nota() → compilar_pdf()",
+        "oque": "O Jinja2 preenche o template .tex com os dados/gráficos (usando delimitadores "
+        "((* *)) e ((( ))) para não brigar com as chaves do LaTeX; o % é escapado). Em seguida compila "
+        "o .tex em PDF via subprocess.",
+        "robustez": "Build determinístico com FALLBACK: tenta latexmk e, se falhar (ex.: MiKTeX sem "
+        "Perl), usa pdflatex. Captura stdout/stderr e o .log; se nenhum compilador gerar o PDF, "
+        "levanta LatexCompilationError preservando o log — nunca um PDF parcial.",
+    },
+    {
+        "n": 11,
+        "titulo": "Gerar os HTML e encerrar com um veredito",
+        "arquivo": "render_html.py  +  pipeline.py  +  __main__.py",
+        "funcao": "renderizar_relatorio/dossie/guia; finally; main() retorna 0/1/2",
+        "oque": "Gera o relatório técnico, o dossiê e este guia (todos autossuficientes). O finally do "
+        "pipeline loga o fim; o __main__ imprime o resultado e devolve um código de saída: 0 = nota "
+        "gerada, 2 = mês não publicado, 1 = falha de domínio (com mensagem acionável e log).",
+        "robustez": "O invariante final: ou um PDF válido, ou falha clara com log — jamais um PDF "
+        "silenciosamente errado.",
+    },
+]
+
+GLOSSARIO = [
+    (
+        "Número-índice (base 2022=100)",
+        "A produção não é medida em 'toneladas', e sim como um índice: 100 = média de 2022. Um índice "
+        "de 106 significa produzir 6% a mais que a média de 2022.",
+    ),
+    (
+        "Ajuste sazonal (dessazonalizado)",
+        "Remove padrões que se repetem todo ano (férias, festas, safra). Sem isso, dezembro sempre "
+        "pareceria 'alto'. Com ajuste, dá para comparar um mês com o anterior de forma justa.",
+    ),
+    (
+        "Variação mensal m/m-1 (a 'margem')",
+        "Quanto a produção cresceu/caiu ante o mês imediatamente anterior, já dessazonalizada. É o "
+        "termômetro do momento — mostra a aceleração ou desaceleração mais recente.",
+    ),
+    (
+        "Variação interanual m/m-12",
+        "Compara o mês com o MESMO mês do ano passado (ex.: abr/2026 vs abr/2025). Mostra o quadro "
+        "anual, menos sensível a ruído de um mês isolado.",
+    ),
+    (
+        "Acumulado no ano",
+        "Soma do ano até o mês, comparada com o mesmo período do ano anterior. Responde: 'como está "
+        "o ano até agora?'",
+    ),
+    (
+        "Acumulado em 12 meses",
+        "Janela móvel dos últimos 12 meses vs os 12 anteriores. É a medida de TENDÊNCIA mais estável.",
+    ),
+    (
+        "Grandes categorias econômicas",
+        "Agrupa a indústria por destino do produto: bens de capital (máquinas/equipamentos = "
+        "investimento), bens intermediários (insumos para outras indústrias), bens de consumo duráveis "
+        "(carros, eletrodomésticos) e semi/não duráveis (alimentos, roupas).",
+    ),
+    (
+        "Seções: extrativa × transformação",
+        "Extrativa = tirar da natureza (petróleo, minério). Transformação = manufatura (alimentos, "
+        "química, veículos…). Juntas formam a 'indústria geral'.",
+    ),
+]
+
+
+def renderizar_guia(
+    dados: DadosPim,
+    narrativa: Narrativa,
+    graficos: Graficos,
+    *,
+    dir_saida: Path = config.DIR_OUTPUT,
+    dir_templates: Path = config.DIR_TEMPLATES,
+    pdf_path: Path | None = None,
+) -> Path:
+    """Renderiza ``output/guia.html`` — passo a passo didático e cronológico da esteira."""
+    exigir_nao_nulo(dados, "dados", operacao="renderizar_guia")
+    exigir_nao_nulo(narrativa, "narrativa", operacao="renderizar_guia")
+    exigir_nao_nulo(graficos, "graficos", operacao="renderizar_guia")
+
+    env = Environment(
+        loader=FileSystemLoader(str(dir_templates)),
+        autoescape=select_autoescape(["html", "xml"]),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    env.filters["pct"] = formatar_pct
+
+    try:
+        template = env.get_template("guia.html.j2")
+        html = template.render(
+            dados=dados,
+            narrativa=narrativa,
+            img_serie=_data_uri_png(graficos.serie_png),
+            img_categorias=_data_uri_png(graficos.categorias_png),
+            passos=PASSOS,
+            glossario=GLOSSARIO,
+            repo_url=REPO_URL,
+            pdf_nome=pdf_path.name if pdf_path else "",
+        )
+    except Exception as erro:
+        raise HtmlRenderError(
+            "Falha ao renderizar o guia HTML",
+            contexto={"dir_templates": str(dir_templates)},
+        ) from erro
+
+    dir_saida.mkdir(parents=True, exist_ok=True)
+    caminho = dir_saida / "guia.html"
+    caminho.write_text(html, encoding="utf-8")
+    logger.info("Guia HTML gerado: %s", caminho)
+    return caminho

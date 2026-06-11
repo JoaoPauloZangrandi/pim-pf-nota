@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guia passo a passo — Esteira PIM-PF</title>
+<style>
+  :root { --azul:#1a4f8a; --azul2:#2166ac; --cinza:#555; --borda:#e3e3e3; --verde:#1b7837;
+          --verm:#b2182b; --bg:#f7f8fa; --amarelo:#fff8e1; --amborda:#f0d98a; }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#222;
+         line-height:1.65; margin:0; background:var(--bg); }
+  .wrap { max-width:920px; margin:0 auto; padding:34px 24px 80px; }
+  h1 { color:var(--azul); margin:0 0 6px; font-size:2rem; }
+  h2 { color:var(--azul); margin-top:48px; border-bottom:2px solid var(--borda); padding-bottom:6px; }
+  h3 { margin:22px 0 6px; }
+  .sub { color:var(--cinza); }
+  .lead { background:#fff; border:1px solid var(--borda); border-radius:12px; padding:20px 22px; margin:16px 0; }
+  .gloss { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .gloss .item { background:#fff; border:1px solid var(--borda); border-radius:8px; padding:12px 14px; }
+  .gloss b { color:var(--azul2); }
+  .exemplo { background:var(--amarelo); border:1px solid var(--amborda); border-radius:10px; padding:14px 18px; margin:14px 0; }
+  .passo { display:flex; gap:16px; background:#fff; border:1px solid var(--borda); border-radius:10px;
+           padding:16px 18px; margin:14px 0; }
+  .passo .num { flex:0 0 44px; height:44px; width:44px; border-radius:50%; background:var(--azul);
+                color:#fff; font-weight:700; font-size:1.1rem; display:flex; align-items:center; justify-content:center; }
+  .passo .corpo { flex:1; }
+  .passo h3 { margin:0 0 4px; }
+  .meta { font-size:.85rem; color:var(--cinza); margin:2px 0 8px; }
+  .meta code { background:#eef3f9; padding:1px 6px; border-radius:4px; color:#234; }
+  .rob { background:#eef7ef; border-left:4px solid var(--verde); border-radius:6px;
+         padding:8px 12px; margin-top:8px; font-size:.9rem; }
+  .rob b { color:var(--verde); }
+  table { border-collapse:collapse; width:100%; margin:12px 0; background:#fff; }
+  th,td { border:1px solid var(--borda); padding:9px 11px; text-align:left; vertical-align:top; }
+  th { background:#eef3f9; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .pos{color:var(--verde);} .neg{color:var(--verm);}
+  img.fig { width:100%; border:1px solid var(--borda); border-radius:8px; background:#fff; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  a { color:var(--azul2); }
+  footer { color:var(--cinza); font-size:.85rem; margin-top:50px; border-top:1px solid var(--borda); padding-top:16px; }
+  @media (max-width:760px){ .gloss,.grid2{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Guia passo a passo — como a esteira funciona</h1>
+  <div class="sub">Documento didático: o que acontece, em ordem, qual arquivo faz cada coisa, onde
+     está a robustez e o que os números da PIM-PF significam. Exemplo real:
+     <strong>{{ dados.periodo_nome }}</strong>.</div>
+
+  <div class="lead">
+    <strong>Em uma frase:</strong> a esteira pega os dados da Pesquisa Industrial Mensal no
+    site do IBGE (SIDRA), entende o que eles dizem, calcula as variações, escreve um texto
+    explicativo, desenha gráficos e monta um PDF pronto para o cliente — tudo sozinho, em segundos,
+    e com várias travas de segurança para não falhar no dia da divulgação.
+  </div>
+
+  <!-- PARTE A: significado dos dados -->
+  <h2>Parte A · O que os números da PIM-PF significam</h2>
+  <p>A PIM-PF mede o quanto a indústria brasileira produziu. Antes de ver o código, vale entender
+     o vocabulário — assim os números da nota fazem sentido:</p>
+  <div class="gloss">
+    {% for termo, definicao in glossario %}
+    <div class="item"><b>{{ termo }}</b><br>{{ definicao }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="exemplo">
+    <strong>Lendo o resultado real de {{ dados.periodo_nome }}:</strong>
+    o índice dessazonalizado da indústria geral está em
+    <strong>{{ '%.1f'|format(dados.indice_dessaz)|replace('.', ',') }}</strong> pontos
+    (base 2022=100). Na margem (m/m-1), a produção variou
+    <strong class="{{ 'pos' if dados.industria_geral.var_mensal>=0 else 'neg' }}">{{ dados.industria_geral.var_mensal|pct }}</strong>
+    — é o ritmo mais recente. Na comparação com o mesmo mês do ano passado (interanual),
+    <strong class="{{ 'pos' if dados.industria_geral.var_interanual>=0 else 'neg' }}">{{ dados.industria_geral.var_interanual|pct }}</strong>.
+    No acumulado em 12 meses (a tendência),
+    <strong class="{{ 'pos' if dados.industria_geral.acum_12m>=0 else 'neg' }}">{{ dados.industria_geral.acum_12m|pct }}</strong>.
+    <br><br>{{ narrativa.paragrafo_contexto }}
+  </div>
+
+  <div class="grid2">
+    <div><img class="fig" src="{{ img_serie }}" alt="Índice dessazonalizado">
+      <p class="sub" style="font-size:.85rem">A linha mostra a trajetória do índice nos últimos
+      meses — sobe quando a indústria produz mais.</p></div>
+    <div><img class="fig" src="{{ img_categorias }}" alt="Categorias econômicas">
+      <p class="sub" style="font-size:.85rem">As barras mostram qual tipo de bem puxou para cima
+      (verde) ou para baixo (vermelho) no mês.</p></div>
+  </div>
+
+  <!-- PARTE B: cronologia -->
+  <h2>Parte B · A linha do tempo de uma execução</h2>
+  <p>Quando você roda <code>python -m pim_report --periodo last</code>, isto acontece, nesta ordem:</p>
+
+  {% for p in passos %}
+  <div class="passo">
+    <div class="num">{{ p.n }}</div>
+    <div class="corpo">
+      <h3>{{ p.titulo }}</h3>
+      <div class="meta">📄 Arquivo: <code>{{ p.arquivo }}</code> &nbsp;·&nbsp; 🔧 Função: <code>{{ p.funcao }}</code></div>
+      <div>{{ p.oque }}</div>
+      {% if p.robustez %}<div class="rob"><b>🛡 Robustez:</b> {{ p.robustez }}</div>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- PARTE C: robustez consolidada -->
+  <h2>Parte C · Onde está a robustez (resumo)</h2>
+  <p>“Minimizar o risco de chegar no escritório e o código não ter funcionado” é o critério central.
+     Veja as travas e onde cada uma vive:</p>
+  <table>
+    <tr><th style="width:30%">Trava de segurança</th><th>O que evita</th><th style="width:24%">Onde</th></tr>
+    <tr><td>Timeout + retry (só transitório)</td><td>Travar para sempre ou desistir por uma falha de rede passageira</td><td><code>sidra_client.py</code></td></tr>
+    <tr><td>Tradução de erros para SidraError</td><td>Que detalhes do 'requests' vazem e contaminem o resto do código</td><td><code>sidra_client.py · exceptions.py</code></td></tr>
+    <tr><td>Validação de schema (pandera)</td><td>Gerar números errados se o IBGE mudar o layout</td><td><code>schema.py</code></td></tr>
+    <tr><td>Checagem de publicação (Special Case)</td><td>Publicar uma nota com mês velho fingindo ser novo</td><td><code>pipeline.py · special_cases.py</code></td></tr>
+    <tr><td>Cache + degradação</td><td>Não ter nota nenhuma quando a API cai (usa o cache e avisa)</td><td><code>cache.py · pipeline.py</code></td></tr>
+    <tr><td>Sem None cruzando fronteiras</td><td>Erros silenciosos por None/flag esquecido</td><td>todos (guard <code>exigir_nao_nulo</code>)</td></tr>
+    <tr><td>Fallback de compilador LaTeX + log</td><td>Falhar só porque o latexmk não roda; perder o diagnóstico</td><td><code>render_latex.py</code></td></tr>
+    <tr><td>Testes que forçam exceção + CI</td><td>Quebrar em produção sem ninguém perceber antes</td><td><code>tests/ · .github/workflows/ci.yml</code></td></tr>
+    <tr><td>Cron + issue automática em falha</td><td>Descobrir o problema só quando o cliente reclama</td><td><code>.github/workflows/divulgacao.yml</code></td></tr>
+  </table>
+
+  <!-- PARTE D: automação -->
+  <h2>Parte D · Como está automatizado</h2>
+  <p>Há dois níveis de automação:</p>
+  <ul>
+    <li><strong>Um comando faz tudo.</strong> <code>python -m pim_report --periodo last</code>
+       executa coleta → tratamento → análise → PDF → HTML, sem nenhum passo manual.</li>
+    <li><strong>Sem ninguém digitar nada.</strong> O workflow <code>divulgacao.yml</code> tem um
+       agendamento (cron) que dispara perto do horário de divulgação do IBGE; ele instala o TeX,
+       roda a esteira, publica os arquivos e — se algo falhar — <strong>abre uma issue
+       automaticamente</strong> no GitHub para o time agir antes das 10h.</li>
+  </ul>
+  <p class="sub">Resultado: no dia da divulgação, a nota fica pronta em segundos e o risco de
+     “não funcionou” é empurrado para perto de zero — e, se ainda assim falhar, falha de forma
+     visível e diagnosticável.</p>
+
+  <footer>
+    Fonte: {{ dados.fonte }} — tabelas 8888 e 8887. Extração em {{ dados.data_extracao.strftime('%d/%m/%Y') }}.
+    {% if dados.de_cache %}<strong>Dados de cache de {{ dados.data_cache.strftime('%d/%m/%Y') }}.</strong>{% endif %}
+    <br>Veja também <code>dossie.html</code> (visão geral) e <code>relatorio.html</code> (resultado).
+    Repositório: <a href="{{ repo_url }}">{{ repo_url }}</a>.
+  </footer>
+
+</div>
+</body>
+</html>
