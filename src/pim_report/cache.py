@@ -26,9 +26,13 @@ _PADRAO_ARQUIVO = "%Y-%m-%d"
 
 @dataclass(frozen=True)
 class CacheBruto:
-    """Registros crus recuperados do cache, com a data do arquivo de origem."""
+    """Conteúdo cru recuperado do cache, com a data do arquivo de origem.
 
-    registros: list[dict]
+    ``registros`` é o documento JSON gravado: pode ser uma lista de registros do SIDRA ou um
+    "pacote" (dict) reunindo várias consultas — ver :mod:`pim_report.pipeline`.
+    """
+
+    registros: list[dict] | dict
     data_origem: dt.date
     caminho: Path
 
@@ -49,9 +53,7 @@ def salvar_bruto(
     dir_cache.mkdir(parents=True, exist_ok=True)
     caminho = dir_cache / f"{data.strftime(_PADRAO_ARQUIVO)}.json"
     try:
-        caminho.write_text(
-            json.dumps(registros, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        caminho.write_text(json.dumps(registros, ensure_ascii=False, indent=2), encoding="utf-8")
     except OSError as erro:
         raise CacheError(
             "Falha ao gravar o cache cru", contexto={"caminho": str(caminho)}
@@ -82,7 +84,7 @@ def carregar_mais_recente(dir_cache: Path = config.DIR_DATA_RAW) -> CacheBruto:
             contexto={"caminho": str(caminho)},
         ) from erro
 
-    if not isinstance(registros, list) or not registros:
+    if not isinstance(registros, (list, dict)) or not registros:
         raise CacheVazioError(
             "Cache mais recente está vazio ou corrompido",
             contexto={"caminho": str(caminho)},
