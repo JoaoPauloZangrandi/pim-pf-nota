@@ -22,6 +22,7 @@ from . import config
 from .analysis import Narrativa, formatar_pct
 from .charts import Graficos
 from .exceptions import LatexCompilationError, RenderError, exigir_nao_nulo
+from .render_html import MODULOS, PRINCIPIOS
 from .transform import DadosPim
 
 logger = logging.getLogger(__name__)
@@ -177,10 +178,72 @@ def renderizar_nota(
 
 
 def _limpar_subprodutos(dir_saida: Path, nome_base: str) -> None:
-    for ext in (".aux", ".fls", ".fdb_latexmk", ".out", ".log", ".synctex.gz"):
+    for ext in (".aux", ".fls", ".fdb_latexmk", ".out", ".log", ".synctex.gz", ".toc"):
         alvo = dir_saida / f"{nome_base}{ext}"
         if alvo.exists():
             try:
                 alvo.unlink()
             except OSError:
                 shutil.rmtree(alvo, ignore_errors=True)
+
+
+# --------------------------------------------------------------------------- #
+# Documento PDF COMPLETO (manual didático que explica todo o projeto)
+# --------------------------------------------------------------------------- #
+LINKS = [
+    (
+        "PIM-PF — pagina oficial (metodologia e calendario)",
+        "https://www.ibge.gov.br/estatisticas/economicas/industria/"
+        "9294-pesquisa-industrial-mensal-producao-fisica-brasil.html",
+    ),
+    ("SIDRA — PIM-PF Brasil", "https://sidra.ibge.gov.br/home/pimpfbr/brasil"),
+    ("API SIDRA", "https://apisidra.ibge.gov.br/"),
+    (
+        "Exemplo de narrativa (materia do IBGE)",
+        "https://agenciadenoticias.ibge.gov.br/agencia-noticias/2012-agencia-de-noticias/"
+        "noticias/27576-pandemia-faz-producao-industrial-cair-9-1-e-ter-pior-marco-desde-2002",
+    ),
+    (
+        "Metadados oficiais — tabela 8888",
+        "https://servicodados.ibge.gov.br/api/v3/agregados/8888/metadados",
+    ),
+    ("Repositorio do projeto (GitHub)", "https://github.com/JoaoPauloZangrandi/pim-pf-nota"),
+]
+
+
+def renderizar_manual(
+    dados: DadosPim,
+    narrativa: Narrativa,
+    graficos: Graficos,
+    *,
+    dir_saida: Path = config.DIR_OUTPUT,
+    dir_templates: Path = config.DIR_TEMPLATES,
+    runner: Runner | None = None,
+) -> Path:
+    """Renderiza e compila o PDF completo (manual didático) que explica todo o projeto."""
+    exigir_nao_nulo(dados, "dados", operacao="renderizar_manual")
+    exigir_nao_nulo(narrativa, "narrativa", operacao="renderizar_manual")
+    exigir_nao_nulo(graficos, "graficos", operacao="renderizar_manual")
+
+    env = _ambiente_jinja(dir_templates)
+    try:
+        template = env.get_template("manual.tex.j2")
+    except Exception as erro:
+        raise RenderError(
+            "Template do manual (manual.tex.j2) não encontrado/inválido",
+            contexto={"dir_templates": str(dir_templates)},
+        ) from erro
+
+    tex = template.render(
+        dados=dados,
+        narrativa=narrativa,
+        grafico_serie=graficos.serie_pdf.as_posix(),
+        grafico_categorias=graficos.categorias_pdf.as_posix(),
+        principios=PRINCIPIOS,
+        modulos=MODULOS,
+        links=LINKS,
+    )
+    nome_base = f"manual_pim_{dados.periodo[:4]}-{dados.periodo[4:6]}"
+    pdf = compilar_pdf(tex=tex, destino=dir_saida, nome_base=nome_base, runner=runner)
+    _limpar_subprodutos(dir_saida, nome_base)
+    return pdf

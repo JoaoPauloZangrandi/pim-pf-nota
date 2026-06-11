@@ -110,10 +110,13 @@ make lint     # ruff + black --check
 
 ## Entregáveis (em `output/`)
 
-- `nota_pim_AAAA-MM.pdf` — a nota final (1 página, gerada via LaTeX).
+- `nota_pim_AAAA-MM.pdf` — a **nota final** para o cliente (1 página, gerada via LaTeX).
+- `manual_pim_AAAA-MM.pdf` — **documento PDF completo e didático** que explica TODO o projeto
+  (para quem nunca viu o repositório, não é técnico e não sabe o que é a PIM-PF): o que é a
+  pesquisa, o desafio, os resultados, o passo a passo, a automação, a robustez, os 8 princípios
+  do Martin e os trechos principais do código.
 - `nota_pim_AAAA-MM.tex` — o `.tex` preenchido (versionado como exemplo).
-- `relatorio.html` — relatório explicativo autossuficiente que mapeia os 8 princípios do
-  Cap. 7 do Martin ao código, descreve cada módulo, o fluxo, os dados e a robustez.
+- `relatorio.html` — relatório técnico autossuficiente (mapeia os princípios do Cap. 7 ao código).
 - `grafico_serie.*`, `grafico_categorias.*` — figuras (PDF para LaTeX, PNG para o HTML).
 
 ## Automação (GitHub Actions)

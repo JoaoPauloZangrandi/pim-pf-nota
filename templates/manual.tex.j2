@@ -1,0 +1,478 @@
+%% manual.tex.j2 — documento PDF COMPLETO e didatico do projeto PIM-PF.
+%% Renderizado por render_latex.renderizar_manual com delimitadores Jinja customizados.
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[brazil]{babel}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{array}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+\definecolor{azul}{HTML}{1A4F8A}
+\definecolor{azul2}{HTML}{2166AC}
+\definecolor{cinza}{HTML}{555555}
+\definecolor{verde}{HTML}{1B7837}
+\definecolor{vermelho}{HTML}{B2182B}
+\definecolor{caixabg}{HTML}{EEF3F9}
+\definecolor{verdebg}{HTML}{EAF4EA}
+
+\newcommand{\secao}[1]{\vspace{4pt}{\color{azul}\large\textbf{#1}}\par\vspace{2pt}\hrule\vspace{8pt}}
+\newcommand{\subt}[1]{\vspace{6pt}{\color{azul2}\textbf{#1}}\par}
+
+% Caixa simples (sem dependencias externas) para destaques.
+\newcommand{\caixa}[2]{%
+  \par\vspace{4pt}\noindent\colorbox{#1}{\begin{minipage}{0.985\linewidth}\vspace{4pt}#2\vspace{4pt}\end{minipage}}\par\vspace{4pt}}
+
+\begin{document}
+\pagestyle{plain}
+
+% -------------------------------------------------------------------------- %
+% CAPA
+% -------------------------------------------------------------------------- %
+\begin{center}
+\vspace*{1.5cm}
+{\color{azul}\Huge\textbf{A Esteira da PIM-PF}}\\[6pt]
+{\Large Como uma nota econômica nasce sozinha, do dado ao PDF}\\[18pt]
+{\color{cinza}\large Documento completo e didático do projeto --- para quem nunca viu o
+repositório, não é técnico, e nem sabe o que é a PIM-PF.}\\[28pt]
+\rule{0.7\linewidth}{0.6pt}\\[10pt]
+{\large Exemplo real deste documento: \textbf{((( dados.periodo_nome|tex )))}}\\[4pt]
+{\color{cinza} Gerado automaticamente em ((( dados.data_extracao.strftime('%d/%m/%Y') )))
+pela própria esteira.}\\[4pt]
+{\color{cinza}\small Repositório: github.com/JoaoPauloZangrandi/pim-pf-nota}
+\end{center}
+\vfill
+\caixa{caixabg}{\small \textbf{O que é este documento?} Você está lendo um arquivo que o
+\emph{próprio programa} montou. Ele explica, em ordem e em linguagem simples, tudo o que o
+projeto faz: o que é a pesquisa do IBGE, qual era o desafio, como o resultado é apresentado, como
+o computador faz tudo sozinho, por que (quase) nunca falha, e até mostra os pedaços mais
+importantes do código. Não é preciso saber programar para entender.}
+\newpage
+
+% -------------------------------------------------------------------------- %
+% COMO LER + PALAVRINHAS
+% -------------------------------------------------------------------------- %
+\secao{Como ler este documento}
+Leia na ordem, do começo ao fim --- cada parte prepara a seguinte. Antes de tudo, quatro
+palavrinhas de programação que vão aparecer (explicadas como se você nunca tivesse visto código):
+
+\subt{Quatro palavrinhas, sem susto}
+\begin{itemize}
+  \item \textbf{Programa / código:} uma lista de instruções que o computador segue, como uma
+        receita bem detalhada.
+  \item \textbf{Arquivo \texttt{.py}:} um pedaço do programa escrito na linguagem \emph{Python}.
+        Cada arquivo cuida de uma tarefa --- como gavetas etiquetadas numa cozinha.
+  \item \textbf{Função:} uma mini-receita dentro do arquivo que faz \emph{uma} coisa específica
+        (por exemplo, ``buscar os dados'').
+  \item \textbf{Erro tratado (exceção):} quando algo sai do esperado, o programa ``levanta a
+        mão'' e avisa, em vez de seguir fingindo que está tudo bem. Esse cuidado é o coração
+        deste projeto.
+\end{itemize}
+
+\subt{Sumário}
+\begin{enumerate}
+  \item O que é a PIM-PF (a pesquisa do IBGE)
+  \item O que os números significam (glossário)
+  \item O desafio da consultoria
+  \item A apresentação: o resultado de ((( dados.periodo_nome|tex )))
+  \item Como a esteira funciona, passo a passo
+  \item Onde está a automação
+  \item A rede de proteção (robustez)
+  \item A base teórica: Robert C. Martin, Cap. 7
+  \item O código por dentro (os trechos principais)
+  \item Como rodar e a estrutura do repositório
+\end{enumerate}
+\newpage
+
+% -------------------------------------------------------------------------- %
+% 1. O QUE E A PIM-PF
+% -------------------------------------------------------------------------- %
+\secao{1. O que é a PIM-PF (a pesquisa do IBGE)}
+A \textbf{PIM-PF} significa \emph{Pesquisa Industrial Mensal --- Produção Física}. Em palavras
+simples: todo mês, o IBGE (o instituto oficial de estatísticas do Brasil) mede \textbf{o quanto
+as fábricas do país produziram} --- de alimentos a automóveis, de petróleo a remédios.
+
+É um dos primeiros sinais de como vai a economia: se a indústria produz mais, geralmente há mais
+empregos, mais vendas e mais investimento; se produz menos, é sinal de freada. Por isso bancos,
+consultorias e jornais aguardam esse número todo mês.
+
+O IBGE divulga os dados num site chamado \textbf{SIDRA} por volta das \textbf{9h da manhã}, em
+datas marcadas num calendário. O número não vem em ``toneladas'': vem como um \textbf{índice}
+(explicado no glossário a seguir).
+
+% -------------------------------------------------------------------------- %
+% 2. GLOSSARIO
+% -------------------------------------------------------------------------- %
+\secao{2. O que os números significam (glossário)}
+\subt{O ``índice'' (base 2022 = 100)}
+A produção vira uma nota comparada com o ano de 2022, que vale 100. Um índice de 106 quer dizer
+``produzindo cerca de 6 por cento a mais do que a média de 2022''.
+
+\subt{``Ajuste sazonal''}
+Alguns meses são naturalmente mais fracos ou fortes (dezembro tem festas; janeiro, férias). O
+ajuste sazonal \emph{desconta} esse efeito do calendário, para podermos comparar um mês com o
+outro de forma justa.
+
+\subt{As quatro leituras que a nota sempre traz}
+\begin{itemize}
+  \item \textbf{Variação no mês (a ``margem'', m/m-1):} quanto mudou ante o mês anterior. É o
+        termômetro do momento --- mostra se a indústria está acelerando ou freando agora.
+  \item \textbf{Variação no ano (``interanual'', m/m-12):} compara com o mesmo mês do ano passado
+        (ex.: abril de 2026 contra abril de 2025). Mostra o quadro mais amplo.
+  \item \textbf{Acumulado no ano:} soma o que foi produzido no ano até aqui, ante o mesmo período
+        do ano anterior. Responde ``como está o ano até agora?''.
+  \item \textbf{Acumulado em 12 meses:} olha os últimos 12 meses juntos. É a medida mais
+        ``calma'', que mostra a tendência de fundo.
+\end{itemize}
+
+\subt{Como a indústria é dividida}
+\begin{itemize}
+  \item \textbf{Por tipo de produto (categorias econômicas):} bens de capital (máquinas e
+        equipamentos = investimento), bens intermediários (insumos para outras indústrias) e bens
+        de consumo --- duráveis (carro, geladeira) e semi/não duráveis (comida, roupa).
+  \item \textbf{Por setor (seções):} indústria \emph{extrativa} (tirar da natureza: petróleo,
+        minério) e \emph{de transformação} (fabricar: alimentos, química, veículos). Juntas formam
+        a ``indústria geral''.
+\end{itemize}
+
+% -------------------------------------------------------------------------- %
+% 3. O DESAFIO
+% -------------------------------------------------------------------------- %
+\secao{3. O desafio da consultoria}
+Imagine que você é \emph{trainee} numa consultoria de economia. O IBGE divulga a PIM-PF por volta
+das 9h; a consultoria quer mandar aos clientes uma \textbf{nota informativa até as 10h}. O prazo é
+curtíssimo. Fazer isso na mão todo mês seria arriscado: bastaria um detalhe para atrasar ou sair
+errado.
+
+A solução é uma \textbf{esteira automatizada}: um programa que, sozinho, busca os dados, calcula,
+escreve o texto, desenha os gráficos e monta o PDF final --- em segundos. E, como é coisa séria
+que vai para clientes, ele precisa ser \textbf{robusto}: nunca entregar um número errado em
+silêncio. Ou sai a nota certa, ou aparece um aviso claro do que deu errado.
+
+% -------------------------------------------------------------------------- %
+% 4. A APRESENTACAO (RESULTADO)
+% -------------------------------------------------------------------------- %
+\secao{4. A apresentação: o resultado de ((( dados.periodo_nome|tex )))}
+Esta é a informação que a esteira produziu para o mês de exemplo. (A nota enxuta de 1 página fica
+no arquivo \texttt{nota\_pim\_AAAA-MM.pdf}; aqui mostramos o mesmo conteúdo, explicado.)
+
+\caixa{caixabg}{\textbf{Manchete:} ((( narrativa.manchete|tex ))).\\[2pt]
+\textbf{Resumo:} ((( narrativa.subtitulo|tex ))).}
+
+((( narrativa.paragrafo_contexto|tex )))
+
+\subt{As quatro leituras (indústria geral)}
+\begin{center}
+\begin{tabular}{>{\raggedright\arraybackslash}p{9.5cm} r}
+\toprule
+\textbf{Leitura} & \textbf{Variação} \\
+\midrule
+((* for rotulo, valor in dados.leituras.items() *))
+((( rotulo|tex ))) & ((( valor|pct|tex ))) \\
+((* endfor *))
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subt{Por setor (seções)}
+\begin{center}
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Setor} & \textbf{m/m-1} & \textbf{Interanual} & \textbf{Ano} & \textbf{12 m} \\
+\midrule
+((* for s in dados.secoes *))
+((( s.nome|tex ))) & ((( s.var_mensal|pct|tex ))) & ((( s.var_interanual|pct|tex ))) & ((( s.acum_ano|pct|tex ))) & ((( s.acum_12m|pct|tex ))) \\
+((* endfor *))
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subt{Por tipo de produto (grandes categorias econômicas)}
+\begin{center}
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Categoria} & \textbf{m/m-1} & \textbf{Interanual} & \textbf{Ano} & \textbf{12 m} \\
+\midrule
+((* for c in dados.categorias_economicas *))
+((( c.nome|tex ))) & ((( c.var_mensal|pct|tex ))) & ((( c.var_interanual|pct|tex ))) & ((( c.acum_ano|pct|tex ))) & ((( c.acum_12m|pct|tex ))) \\
+((* endfor *))
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subt{Destaques entre atividades (comparação interanual)}
+\textbf{Maiores altas:} ((( narrativa.texto_altas|tex )))\\
+\textbf{Maiores baixas:} ((( narrativa.texto_baixas|tex )))
+
+\subt{Os gráficos}
+\noindent\begin{minipage}{0.5\linewidth}\centering
+\includegraphics[width=\linewidth]{((( grafico_serie )))}\\
+{\color{cinza}\footnotesize A linha mostra a produção ao longo do tempo.}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}\centering
+\includegraphics[width=\linewidth]{((( grafico_categorias )))}\\
+{\color{cinza}\footnotesize Verde = alta no mês; vermelho = queda.}
+\end{minipage}
+
+% -------------------------------------------------------------------------- %
+% 5. PASSO A PASSO
+% -------------------------------------------------------------------------- %
+\newpage
+\secao{5. Como a esteira funciona, passo a passo}
+Pense numa \textbf{cozinha de restaurante} que prepara o mesmo prato toda manhã. Eis o que
+acontece, em ordem, quando o programa roda:
+
+\begin{enumerate}
+  \item \textbf{Alguém aperta o ``play''.} Você (ou um robô agendado) dá um comando. Daí em diante
+        o programa toca sozinho. \emph{(arquivo: a porta de entrada do programa.)}
+  \item \textbf{O chefe de cozinha comanda.} Um arquivo central chama cada ajudante na ordem
+        certa e já entra com um plano B caso algo falhe. \emph{(arquivo: \texttt{pipeline.py}.)}
+  \item \textbf{Buscar os ingredientes no fornecedor (o IBGE).} O programa acessa o site de dados
+        do IBGE pela internet e baixa os números. \emph{(arquivo: \texttt{sidra\_client.py}.)}
+  \item \textbf{Conferir se o ``prato do dia'' já saiu.} Se o mês pedido ainda não foi divulgado,
+        ele avisa e para --- não serve dado velho como novo.
+  \item \textbf{Pegar os três ingredientes:} o resultado do mês, o histórico de 3 anos (para o
+        gráfico) e os números por tipo de produto.
+  \item \textbf{Guardar uma cópia ``na geladeira''.} Salva os dados crus num arquivo. Se amanhã o
+        site estiver fora do ar, dá para usar essa cópia. \emph{(arquivo: \texttt{cache.py}.)}
+  \item \textbf{Conferir se os ingredientes vieram certos.} Verifica se os dados têm o formato
+        esperado; se o IBGE mudar o layout, para na hora. \emph{(arquivo: \texttt{schema.py}.)}
+  \item \textbf{Transformar o cru no prato.} Calcula as variações, separa por setor e acha as
+        maiores altas e baixas. \emph{(arquivo: \texttt{transform.py}.)}
+  \item \textbf{Escrever o texto.} Monta a manchete e o contexto por regras fixas --- nunca
+        ``inventa''. \emph{(arquivo: \texttt{analysis.py}.)}
+  \item \textbf{Desenhar os gráficos.} \emph{(arquivo: \texttt{charts.py}.)}
+  \item \textbf{Montar o PDF bonito.} Preenche um molde em LaTeX e ``imprime'' o PDF.
+        \emph{(arquivo: \texttt{render\_latex.py}.)}
+  \item \textbf{Entregar e dar o veredito.} Gera os documentos e avisa: deu certo, o mês não saiu,
+        ou houve um erro (com explicação).
+\end{enumerate}
+
+% -------------------------------------------------------------------------- %
+% 6. AUTOMACAO
+% -------------------------------------------------------------------------- %
+\secao{6. Onde está a automação}
+Há dois níveis:
+\begin{itemize}
+  \item \textbf{Um comando faz tudo.} Rodar \texttt{python -m pim\_report -{}-periodo last}
+        executa toda a esteira (buscar, tratar, analisar, gerar PDF e HTML) sem nenhum passo
+        manual.
+  \item \textbf{Sem ninguém digitar nada.} O projeto tem um ``robô'' no GitHub (um
+        \emph{workflow} agendado) que dispara perto do horário da divulgação do IBGE, roda a
+        esteira, guarda os arquivos e --- se algo falhar --- \textbf{abre um chamado (issue)
+        automaticamente}, para o time agir antes das 10h. Há também um robô que, a cada mudança no
+        código, roda os testes e a checagem de qualidade.
+\end{itemize}
+
+% -------------------------------------------------------------------------- %
+% 7. ROBUSTEZ
+% -------------------------------------------------------------------------- %
+\secao{7. A rede de proteção (robustez)}
+``Minimizar o risco de chegar no escritório e o código não ter funcionado'' é o critério central.
+Cada linha abaixo é uma trava de segurança:
+
+\begin{center}
+\begin{tabular}{>{\raggedright\arraybackslash}p{5.4cm} >{\raggedright\arraybackslash}p{6.6cm} l}
+\toprule
+\textbf{Trava de segurança} & \textbf{O que evita} & \textbf{Onde} \\
+\midrule
+Tempo-limite e novas tentativas & Travar para sempre ou desistir por uma queda passageira de rede & \texttt{sidra\_client.py} \\
+Tradução de erros & Que detalhes técnicos da internet contaminem o resto do programa & \texttt{sidra\_client.py} \\
+Conferência do formato & Gerar números errados se o IBGE mudar o layout & \texttt{schema.py} \\
+``O mês já saiu?'' & Mandar nota com mês velho fingindo ser novo & \texttt{pipeline.py} \\
+Cópia na geladeira (cache) & Ficar sem nota quando o site cai (usa a cópia e avisa) & \texttt{cache.py} \\
+Plano B na impressão & Falhar só porque uma ferramenta de PDF não roda & \texttt{render\_latex.py} \\
+Testes automáticos & Quebrar sem ninguém perceber antes & \texttt{tests/} \\
+Robô que abre chamado & Descobrir o problema só quando o cliente reclama & GitHub Actions \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\caixa{verdebg}{\textbf{A promessa final:} em qualquer execução, ou sai um \textbf{PDF correto},
+ou aparece um \textbf{erro claro com explicação e registro} --- \emph{nunca} um documento errado
+disfarçado de certo.}
+
+% -------------------------------------------------------------------------- %
+% 8. MARTIN
+% -------------------------------------------------------------------------- %
+\newpage
+\secao{8. A base teórica: Robert C. Martin --- \emph{Código Limpo}, Cap. 7}
+O capítulo 7 do livro \emph{Código Limpo} trata de ``Tratamento de Erro'': como um programa deve
+lidar com imprevistos sem virar uma bagunça. O projeto segue os 8 princípios; cada um foi aplicado
+num ponto concreto do código:
+
+\begin{center}
+\begin{tabular}{c >{\raggedright\arraybackslash}p{6.2cm} >{\raggedright\arraybackslash}p{6.0cm}}
+\toprule
+\textbf{\#} & \textbf{Princípio} & \textbf{Onde aplicamos} \\
+\midrule
+((* for p in principios *))
+((( p.n ))) & ((( p.titulo|tex ))) & ((( p.arquivo|tex ))) \\
+\addlinespace
+((* endfor *))
+\bottomrule
+\end{tabular}
+\end{center}
+
+% -------------------------------------------------------------------------- %
+% 9. CODIGO
+% -------------------------------------------------------------------------- %
+\secao{9. O código por dentro (os trechos principais)}
+A seguir, os pedaços mais importantes do código (comentários simplificados). Não precisa entender
+cada linha --- repare na \emph{ideia} de cada um.
+
+\subt{9.1 A regra de ouro: proibir o ``nada'' (None) na entrada}
+Toda função confere se recebeu o que precisava; se veio vazio, avisa na hora.
+\begin{verbatim}
+def exigir_nao_nulo(valor, nome, *, operacao=None):
+    if valor is None:
+        raise InvalidParameterError(
+            f"Parametro obrigatorio ausente: {nome} nao pode ser None.",
+            contexto={"parametro": nome, "operacao": operacao})
+    return valor
+\end{verbatim}
+
+\subt{9.2 O wrapper que conversa com o IBGE e traduz qualquer erro}
+Esta é a peça que ``liga para o fornecedor''. Qualquer problema vira um aviso claro e padronizado.
+\begin{verbatim}
+try:
+    resposta = self._session.get(url, timeout=self.timeout)
+except (requests.Timeout, requests.ConnectionError) as erro:
+    raise SidraConnectionError("Falha de conexao/timeout no SIDRA",
+                               contexto={"url": url}) from erro
+
+if resposta.status_code >= 400:
+    raise SidraHTTPError(f"SIDRA respondeu HTTP {resposta.status_code}",
+                         status_code=resposta.status_code)
+try:
+    dados = resposta.json()
+except ValueError as erro:            # veio algo que nao e JSON
+    raise SidraPayloadError("Resposta do SIDRA nao e JSON valido") from erro
+if len(dados) <= 1:                   # so o cabecalho => sem dados
+    raise SidraEmptyError("Consulta sem registros de dados")
+return dados
+\end{verbatim}
+
+\subt{9.3 Tentar de novo, mas só quando faz sentido}
+Se a falha foi passageira (rede instável, servidor ocupado), tenta de novo, esperando um pouco
+mais a cada vez. Se foi erro definitivo, nem insiste.
+\begin{verbatim}
+def _e_transitorio(exc):
+    if isinstance(exc, SidraConnectionError):  return True
+    if isinstance(exc, SidraHTTPError):        return exc.transitorio  # 5xx
+    return False
+
+Retrying(stop=stop_after_attempt(self.max_tentativas),
+         wait=wait_exponential(multiplier=self.espera_inicial),
+         retry=retry_if_exception(_e_transitorio), reraise=True)
+\end{verbatim}
+
+\subt{9.4 O ``caso especial'': mês ainda não publicado}
+Em vez de um erro confuso, devolve um objeto que diz claramente: este mês ainda não saiu.
+\begin{verbatim}
+class PeriodoNaoPublicado:
+    publicado = False            # nunca se diz publicado
+    def mensagem(self):
+        return (f"PIM-PF do periodo {self.periodo_solicitado} ainda nao "
+                f"publicada (mais recente: {self.periodo_disponivel}).")
+\end{verbatim}
+
+\subt{9.5 A geladeira: usar a cópia quando o site cai}
+\begin{verbatim}
+def carregar_mais_recente(dir_cache):
+    arquivos = sorted(dir_cache.glob("*.json"))
+    if not arquivos:
+        raise CacheVazioError("Nenhum cache disponivel")   # nao retorna None
+    registros = json.loads(arquivos[-1].read_text(encoding="utf-8"))
+    return CacheBruto(registros, _data_do_nome(arquivos[-1]), arquivos[-1])
+\end{verbatim}
+
+\subt{9.6 Imprimir o PDF com plano B}
+Tenta a primeira ferramenta; se falhar, tenta a segunda. Se nenhuma der, guarda o registro do
+erro e avisa.
+\begin{verbatim}
+for cmd in _comandos_candidatos(destino, caminho_tex):  # latexmk, depois pdflatex
+    resultado = executar(cmd, cwd=str(destino))
+    if resultado.returncode == 0 and caminho_pdf.exists():
+        return caminho_pdf
+raise LatexCompilationError("Falha ao compilar o LaTeX",
+                            log_path=str(caminho_log))
+\end{verbatim}
+
+\subt{9.7 O maestro: a sequência inteira, com plano B embutido}
+Repare na estrutura ``tente / se falhar / no fim sempre''. É o desenho que garante a promessa
+final.
+\begin{verbatim}
+try:
+    try:
+        pacote = coletar_pacote(client, alvo)   # busca ao vivo
+        salvar_bruto(pacote, ...)               # guarda a copia
+    except SidraError as erro:                  # o site caiu?
+        cache = carregar_mais_recente(...)      # usa a copia da geladeira
+        pacote, de_cache = cache.registros, True
+    dados     = construir_dados(pacote, ...)
+    narrativa = gerar_narrativa(dados)
+    pdf  = renderizar_nota(dados, narrativa, graficos, ...)
+    html = renderizar_relatorio(dados, narrativa, graficos, ...)
+except PimReportError as erro:
+    logger.error("Esteira falhou: %s", erro); raise
+finally:
+    logger.info("=== Fim da esteira ===")
+\end{verbatim}
+
+% -------------------------------------------------------------------------- %
+% 10. COMO RODAR + ESTRUTURA
+% -------------------------------------------------------------------------- %
+\newpage
+\secao{10. Como rodar e a estrutura do repositório}
+\subt{Para rodar no computador}
+\begin{verbatim}
+# 1) preparar o ambiente (uma vez)
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1          # Windows
+pip install -e ".[dev]"
+
+# 2) gerar a nota do mes mais recente
+python -m pim_report --periodo last
+
+# 3) (opcional) refazer um mes especifico
+python -m pim_report --periodo 202504
+\end{verbatim}
+Os arquivos saem na pasta \texttt{output/}: a nota em PDF, este manual, o \texttt{.tex} preenchido,
+o \texttt{relatorio.html} e os gráficos.
+
+\subt{O que cada arquivo do código faz}
+\begin{center}
+\begin{tabular}{l >{\raggedright\arraybackslash}p{10.4cm}}
+\toprule
+\textbf{Arquivo} & \textbf{Responsabilidade} \\
+\midrule
+((* for nome, papel in modulos *))
+((( nome|tex ))) & ((( papel|tex ))) \\
+((* endfor *))
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subt{Para saber mais (fontes oficiais)}
+\begin{itemize}
+((* for titulo, url in links *))
+  \item ((( titulo|tex )))\\ {\footnotesize\color{cinza}\texttt{((( url|tex )))}}
+((* endfor *))
+  \item Robert C. Martin (2011). \emph{Código Limpo} --- Capítulo 7: Tratamento de Erro.
+\end{itemize}
+
+\vfill
+\hrule
+\vspace{4pt}
+{\color{cinza}\footnotesize Fonte dos dados: ((( dados.fonte|tex ))) --- tabelas 8888 e 8887.
+Extração em ((( dados.data_extracao.strftime('%d/%m/%Y') ))).
+((* if dados.de_cache *))\textbf{Atenção: dados de cache de ((( dados.data_cache.strftime('%d/%m/%Y') ))).}((* endif *))
+Documento gerado automaticamente pela esteira \texttt{pim\_report}.}
+
+\end{document}

@@ -18,8 +18,8 @@ from .analysis import gerar_narrativa
 from .cache import carregar_mais_recente, salvar_bruto
 from .charts import gerar_graficos
 from .exceptions import PimReportError, SidraError, exigir_nao_nulo
-from .render_html import renderizar_dossie, renderizar_guia, renderizar_relatorio
-from .render_latex import renderizar_nota
+from .render_html import renderizar_relatorio
+from .render_latex import renderizar_manual, renderizar_nota
 from .sidra_client import SidraClient
 from .special_cases import PeriodoNaoPublicado
 from .transform import construir_dados, montar_dataframe
@@ -141,8 +141,7 @@ def gerar_nota(
         graficos = gerar_graficos(dados, dir_saida=dir_saida)
         pdf = renderizar_nota(dados, narrativa, graficos, dir_saida=dir_saida, runner=runner)
         html = renderizar_relatorio(dados, narrativa, graficos, dir_saida=dir_saida, pdf_path=pdf)
-        renderizar_dossie(dados, narrativa, graficos, dir_saida=dir_saida, pdf_path=pdf)
-        renderizar_guia(dados, narrativa, graficos, dir_saida=dir_saida, pdf_path=pdf)
+        renderizar_manual(dados, narrativa, graficos, dir_saida=dir_saida, runner=runner)
 
         msg = f"Nota gerada para {dados.periodo_nome}: {pdf.name}"
         if de_cache and data_cache is not None:
