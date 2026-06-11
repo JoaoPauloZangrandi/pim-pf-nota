@@ -60,9 +60,9 @@ def _frase_variacao(rotulo: str, valor: float) -> str:
 
 def _texto_destaques(itens: list[ItemVariacao], rotulo: str) -> str:
     if not itens:
-        return f"Não há {rotulo} com dado interanual disponível neste período."
+        return f"sem {rotulo} com dado interanual disponível neste período."
     partes = [f"{it.nome} ({formatar_pct(it.var_interanual)})" for it in itens]
-    return f"{rotulo.capitalize()}: " + "; ".join(partes) + "."
+    return "; ".join(partes) + "."
 
 
 def _texto_categorias(dados: DadosPim) -> str:
@@ -86,8 +86,8 @@ def _paragrafo_contexto(dados: DadosPim) -> str:
     abertura = (
         f"Em {dados.periodo_nome}, a produção industrial brasileira "
         f"{_verbo(mensal)} {_magnitude(mensal)} ante o mês anterior na série com ajuste "
-        f"sazonal, com o índice dessazonalizado em {dados.indice_dessaz:.1f} pontos "
-        f"(base 2022=100)."
+        f"sazonal, com o índice dessazonalizado em "
+        f"{format(dados.indice_dessaz, '.1f').replace('.', ',')} pontos (base 2022=100)."
     ).replace(" .", ".")
 
     # Regra determinística: relação entre o resultado mensal e a tendência de 12 meses.

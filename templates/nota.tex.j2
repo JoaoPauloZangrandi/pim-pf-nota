@@ -1,3 +1,96 @@
 %% nota.tex.j2 — template LaTeX da nota informativa da PIM-PF.
-%% Preenchido por render_latex.py (Jinja2) e compilado via latexmk.
-%% A ser implementado na Etapa 5.
+%% Renderizado por render_latex.py com delimitadores Jinja customizados (ver o modulo).
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[brazil]{babel}
+\usepackage[margin=2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{array}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\pagestyle{empty}
+
+\definecolor{azulpim}{HTML}{2166AC}
+\definecolor{cinzapim}{HTML}{555555}
+\definecolor{vermelhoaviso}{HTML}{B2182B}
+
+\begin{document}
+
+((* if dados.de_cache *))
+\begin{center}
+\colorbox{vermelhoaviso}{\parbox{0.97\linewidth}{\centering\color{white}\textbf{%
+AVISO: dados de cache de ((( dados.data_cache.strftime('%d/%m/%Y') )))%
+\ — API do SIDRA indisponível na extração.}}}
+\end{center}
+\vspace{0.4em}
+((* endif *))
+
+{\color{azulpim}\Large\textbf{Nota PIM-PF — Produção Industrial}}\\[0.2em]
+{\color{cinzapim}\small Mês de referência: \textbf{((( dados.periodo_nome|tex )))}}
+
+\vspace{0.6em}
+{\large\textbf{((( narrativa.manchete|tex )))}}\\[0.2em]
+{\color{cinzapim}((( narrativa.subtitulo|tex )))}
+
+\vspace{0.6em}
+((( narrativa.paragrafo_contexto|tex )))
+
+\vspace{0.8em}
+{\color{azulpim}\textbf{As quatro leituras (indústria geral)}}
+\begin{center}
+\begin{tabular}{>{\raggedright}p{9.5cm} r}
+\toprule
+\textbf{Leitura} & \textbf{Variação} \\
+\midrule
+((* for rotulo, valor in dados.leituras.items() *))
+((( rotulo|tex ))) & ((( valor|pct|tex ))) \\
+((* endfor *))
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.3em}
+{\color{azulpim}\textbf{Por seções}}
+\begin{center}
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Seção} & \textbf{m/m-1} & \textbf{Interanual} & \textbf{Ano} & \textbf{12 m} \\
+\midrule
+((* for s in dados.secoes *))
+((( s.nome|tex ))) & ((( s.var_mensal|pct|tex ))) & ((( s.var_interanual|pct|tex ))) & ((( s.acum_ano|pct|tex ))) & ((( s.acum_12m|pct|tex ))) \\
+((* endfor *))
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2em}
+\noindent\begin{minipage}{0.5\linewidth}\centering
+\includegraphics[width=\linewidth]{((( grafico_serie )))}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}\centering
+\includegraphics[width=\linewidth]{((( grafico_categorias )))}
+\end{minipage}
+
+\vspace{0.4em}
+{\color{azulpim}\textbf{Destaques entre atividades (interanual)}}\\
+\textbf{Altas:} ((( narrativa.texto_altas|tex )))\\
+\textbf{Baixas:} ((( narrativa.texto_baixas|tex )))
+
+\vspace{0.3em}
+((( narrativa.texto_categorias|tex )))
+
+\vfill
+{\color{cinzapim}\footnotesize
+\rule{\linewidth}{0.4pt}\\
+Fonte: ((( dados.fonte|tex ))) — tabelas 8888 e 8887.
+Extração em ((( dados.data_extracao.strftime('%d/%m/%Y') ))).
+((* if dados.de_cache *))\textbf{Dados de cache de ((( dados.data_cache.strftime('%d/%m/%Y') ))).}((* endif *))
+}
+
+\end{document}

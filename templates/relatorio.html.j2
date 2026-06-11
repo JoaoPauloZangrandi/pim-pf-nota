@@ -1,2 +1,159 @@
-{# relatorio.html.j2 — template do relatório HTML explicativo (autossuficiente).
-   Preenchido por render_html.py. A ser implementado na Etapa 6. #}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relatório da esteira PIM-PF — {{ dados.periodo_nome }}</title>
+<style>
+  :root { --azul:#2166ac; --cinza:#555; --borda:#e2e2e2; --verde:#1b7837; --verm:#b2182b; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         color:#222; line-height:1.55; margin:0; background:#fafafa; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { color:var(--azul); margin:0 0 4px; font-size:1.9rem; }
+  h2 { color:var(--azul); border-bottom:2px solid var(--borda); padding-bottom:6px; margin-top:40px; }
+  h3 { margin: 22px 0 6px; }
+  .sub { color:var(--cinza); }
+  .aviso { background:var(--verm); color:#fff; padding:12px 16px; border-radius:6px; font-weight:600; margin:16px 0; }
+  table { border-collapse: collapse; width:100%; margin:12px 0; background:#fff; }
+  th, td { border:1px solid var(--borda); padding:8px 10px; text-align:left; }
+  th { background:#f0f4f9; }
+  td.num, th.num { text-align:right; font-variant-numeric: tabular-nums; }
+  .pos { color:var(--verde); } .neg { color:var(--verm); }
+  pre { background:#1e1e1e; color:#e6e6e6; padding:12px 14px; border-radius:6px; overflow:auto;
+        font-size:.82rem; }
+  code { font-family: "SF Mono", Consolas, Menlo, monospace; }
+  .fluxo { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:16px 0; }
+  .fluxo .box { background:#fff; border:1px solid var(--azul); color:var(--azul);
+                border-radius:6px; padding:8px 10px; font-size:.82rem; font-weight:600; }
+  .fluxo .arr { color:var(--cinza); font-weight:700; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .card { background:#fff; border:1px solid var(--borda); border-radius:8px; padding:14px 16px; }
+  img.fig { width:100%; border:1px solid var(--borda); border-radius:6px; background:#fff; }
+  .princ { background:#fff; border:1px solid var(--borda); border-radius:8px; padding:14px 16px; margin:12px 0; }
+  .princ .tag { display:inline-block; background:var(--azul); color:#fff; border-radius:4px;
+                padding:1px 8px; font-size:.8rem; margin-right:6px; }
+  footer { color:var(--cinza); font-size:.85rem; margin-top:40px; border-top:1px solid var(--borda); padding-top:14px; }
+  @media (max-width:720px){ .grid2, .fluxo { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Esteira PIM-PF — relatório explicativo</h1>
+  <div class="sub">Mês de referência: <strong>{{ dados.periodo_nome }}</strong>
+    · Extração em {{ dados.data_extracao.strftime('%d/%m/%Y') }}
+    {% if pdf_nome %}· Nota: <code>{{ pdf_nome }}</code>{% endif %}</div>
+
+  {% if dados.de_cache %}
+  <div class="aviso">⚠ Dados de cache de {{ dados.data_cache.strftime('%d/%m/%Y') }} — API do SIDRA indisponível na extração.</div>
+  {% endif %}
+
+  <h2>1. Resultado em destaque</h2>
+  <p style="font-size:1.15rem"><strong>{{ narrativa.manchete }}</strong><br>
+     <span class="sub">{{ narrativa.subtitulo }}</span></p>
+  <p>{{ narrativa.paragrafo_contexto }}</p>
+
+  <h3>As quatro leituras (indústria geral)</h3>
+  <table>
+    <tr><th>Leitura</th><th class="num">Variação</th></tr>
+    {% for rotulo, valor in dados.leituras.items() %}
+    <tr><td>{{ rotulo }}</td><td class="num {{ 'pos' if valor>=0 else 'neg' }}">{{ valor|pct }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <div class="grid2">
+    <div><img class="fig" src="{{ img_serie }}" alt="Série do índice dessazonalizado"></div>
+    <div><img class="fig" src="{{ img_categorias }}" alt="Variação por categorias econômicas"></div>
+  </div>
+
+  <h3>Por seções</h3>
+  <table>
+    <tr><th>Seção</th><th class="num">m/m-1</th><th class="num">Interanual</th><th class="num">Ano</th><th class="num">12 meses</th></tr>
+    {% for s in dados.secoes %}
+    <tr><td>{{ s.nome }}</td>
+      <td class="num">{{ s.var_mensal|pct }}</td>
+      <td class="num">{{ s.var_interanual|pct }}</td>
+      <td class="num">{{ s.acum_ano|pct }}</td>
+      <td class="num">{{ s.acum_12m|pct }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <h3>Grandes categorias econômicas</h3>
+  <table>
+    <tr><th>Categoria</th><th class="num">m/m-1</th><th class="num">Interanual</th><th class="num">Ano</th><th class="num">12 meses</th></tr>
+    {% for c in dados.categorias_economicas %}
+    <tr><td>{{ c.nome }}</td>
+      <td class="num">{{ c.var_mensal|pct }}</td>
+      <td class="num">{{ c.var_interanual|pct }}</td>
+      <td class="num">{{ c.acum_ano|pct }}</td>
+      <td class="num">{{ c.acum_12m|pct }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <h3>Destaques entre atividades (interanual)</h3>
+  <p><strong>Altas:</strong> {{ narrativa.texto_altas }}<br>
+     <strong>Baixas:</strong> {{ narrativa.texto_baixas }}</p>
+
+  <h2>2. Como a esteira funciona (fluxo)</h2>
+  <div class="fluxo">
+    <span class="box">CLI (--periodo)</span><span class="arr">→</span>
+    <span class="box">SidraClient (timeout+retry)</span><span class="arr">→</span>
+    <span class="box">cache (grava cru)</span><span class="arr">→</span>
+    <span class="box">schema (pandera)</span><span class="arr">→</span>
+    <span class="box">transform (4 leituras)</span><span class="arr">→</span>
+    <span class="box">analysis (narrativa)</span><span class="arr">→</span>
+    <span class="box">charts</span><span class="arr">→</span>
+    <span class="box">LaTeX → PDF</span><span class="arr">+</span>
+    <span class="box">HTML</span>
+  </div>
+  <p class="sub">Em qualquer falha de rede, o fluxo desvia para o cache mais recente e estampa
+     o aviso destacado. Se o mês pedido não saiu, retorna o Special Case
+     <code>PeriodoNaoPublicado</code> e encerra sem gerar PDF.</p>
+
+  <h3>O que cada módulo faz</h3>
+  <table>
+    <tr><th>Módulo</th><th>Responsabilidade</th></tr>
+    {% for nome, papel in modulos %}
+    <tr><td><code>{{ nome }}</code></td><td>{{ papel }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <h2>3. Tratamento de erro — Martin, Código Limpo (Cap. 7)</h2>
+  <p>Mapa explícito de cada princípio ao ponto do código onde foi aplicado:</p>
+  {% for p in principios %}
+  <div class="princ">
+    <div><span class="tag">Princípio {{ p.n }}</span><strong>{{ p.titulo }}</strong></div>
+    <p style="margin:8px 0 6px">{{ p.onde }}</p>
+    <div class="sub" style="font-size:.85rem">Onde: <code>{{ p.arquivo }}</code></div>
+    <pre><code>{{ p.trecho }}</code></pre>
+  </div>
+  {% endfor %}
+
+  <h2>4. Como a robustez foi garantida</h2>
+  <ul>
+    <li><strong>Timeout + retry:</strong> <code>SidraClient</code> usa timeout explícito e
+        <code>tenacity</code> com backoff exponencial, retentando apenas erros transitórios
+        (conexão/timeout e HTTP 5xx).</li>
+    <li><strong>Validação de schema:</strong> <code>pandera</code> falha cedo e claro se o IBGE
+        mudar colunas/tipos do retorno.</li>
+    <li><strong>Checagem de publicação:</strong> se o mês pedido for posterior ao mais recente
+        disponível, retorna <code>PeriodoNaoPublicado</code> — nunca uma nota com mês velho.</li>
+    <li><strong>Cache + degradação:</strong> cada execução grava
+        <code>data/raw/AAAA-MM-DD.json</code>; com a API fora, usa o cache mais recente e avisa.</li>
+    <li><strong>Build LaTeX determinístico:</strong> compila via subprocess, captura o
+        <code>.log</code> e levanta <code>LatexCompilationError</code> com contexto em caso de falha.</li>
+    <li><strong>Testes que forçam exceção:</strong> timeout, 5xx, JSON malformado, vazio e LaTeX
+        quebrado têm testes dedicados (TDD, vermelho primeiro).</li>
+  </ul>
+
+  <footer>
+    Fonte: {{ dados.fonte }} — tabelas 8888 (seções e atividades) e 8887 (categorias econômicas).
+    Extração em {{ dados.data_extracao.strftime('%d/%m/%Y') }}.
+    {% if dados.de_cache %}<strong>Dados de cache de {{ dados.data_cache.strftime('%d/%m/%Y') }}.</strong>{% endif %}
+    <br>Relatório gerado automaticamente pela esteira <code>pim_report</code>.
+  </footer>
+
+</div>
+</body>
+</html>
