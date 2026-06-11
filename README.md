@@ -15,9 +15,9 @@ uma consultoria de macroeconomia.
 
 ## Status
 
-🚧 **Marco 0 — esqueleto.** A estrutura de pastas, o empacotamento (`pyproject.toml`) e o
-repositório estão prontos. Os módulos contêm apenas docstrings de placeholder; a implementação
-segue as etapas descritas em [Roteiro de implementação](#roteiro-de-implementação).
+✅ **Completo.** Todas as etapas (0 a 8) implementadas. A esteira foi validada de ponta a ponta
+com dados reais do IBGE, gerando `output/nota_pim_AAAA-MM.pdf` e `output/relatorio.html`.
+Suíte de testes verde (inclui os testes que forçam exceções). `ruff` e `black` limpos.
 
 ---
 
@@ -45,9 +45,10 @@ src/pim_report/
 ## Requisitos
 
 - **Python 3.11+** (desenvolvido/validado em 3.14).
-- **Distribuição TeX** com `latexmk` no PATH. Este projeto foi configurado com
-  **MiKTeX 24.1 + latexmk 4.88** no Windows. (`tectonic` é suportado como alternativa, se
-  disponível.)
+- **Distribuição TeX.** A compilação tenta `latexmk` e, se ele não funcionar (ex.: MiKTeX sem
+  Perl), faz **fallback automático para `pdflatex`**. No Windows, **MiKTeX 24.1** já basta
+  (`pdflatex`); o `latexmk` é usado quando disponível. No Linux/CI, instale
+  `latexmk texlive-latex-recommended texlive-fonts-recommended texlive-lang-portuguese`.
 
 ---
 
@@ -106,6 +107,30 @@ make lint     # ruff + black --check
 | 8 | CI/cron (GitHub Actions), README final, smoke test e2e |
 
 ---
+
+## Entregáveis (em `output/`)
+
+- `nota_pim_AAAA-MM.pdf` — a nota final (1 página, gerada via LaTeX).
+- `nota_pim_AAAA-MM.tex` — o `.tex` preenchido (versionado como exemplo).
+- `relatorio.html` — relatório explicativo autossuficiente que mapeia os 8 princípios do
+  Cap. 7 do Martin ao código, descreve cada módulo, o fluxo, os dados e a robustez.
+- `grafico_serie.*`, `grafico_categorias.*` — figuras (PDF para LaTeX, PNG para o HTML).
+
+## Automação (GitHub Actions)
+
+- **`.github/workflows/ci.yml`** — em cada PR/push: `ruff`, `black --check` e `pytest`
+  (os testes não dependem de rede nem de TeX).
+- **`.github/workflows/divulgacao.yml`** — execução agendada (cron) perto do horário de
+  divulgação; instala o TeX, roda `python -m pim_report --periodo last`, publica os artefatos
+  e, **em caso de falha, abre uma issue automaticamente**.
+
+## Robustez — garantias
+
+- Timeout explícito + retry exponencial (`tenacity`) só em erros transitórios.
+- Validação de schema (`pandera`): falha cedo e clara se o IBGE mudar o layout.
+- Checagem de publicação: mês não divulgado → Special Case `PeriodoNaoPublicado` (sem PDF falso).
+- Cache + degradação: usa o cache mais recente se a API cair, com **aviso destacado** no PDF/HTML.
+- Build LaTeX determinístico, com captura de log e `LatexCompilationError` acionável.
 
 ## Fonte dos dados
 

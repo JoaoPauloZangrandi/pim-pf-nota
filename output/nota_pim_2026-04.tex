@@ -1,0 +1,87 @@
+%% nota.tex.j2 — template LaTeX da nota informativa da PIM-PF.
+%% Renderizado por render_latex.py com delimitadores Jinja customizados (ver o modulo).
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[brazil]{babel}
+\usepackage[margin=2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{array}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\pagestyle{empty}
+
+\definecolor{azulpim}{HTML}{2166AC}
+\definecolor{cinzapim}{HTML}{555555}
+\definecolor{vermelhoaviso}{HTML}{B2182B}
+
+\begin{document}
+
+
+{\color{azulpim}\Large\textbf{Nota PIM-PF — Produção Industrial}}\\[0.2em]
+{\color{cinzapim}\small Mês de referência: \textbf{abril 2026}}
+
+\vspace{0.6em}
+{\large\textbf{Produção industrial avançou 0,7\% em abril 2026 (m/m-1, com ajuste sazonal)}}\\[0.2em]
+{\color{cinzapim}Interanual: +2,7\% · Acumulado no ano: +1,7\% · Em 12 meses: +0,7\%}
+
+\vspace{0.6em}
+Em abril 2026, a produção industrial brasileira avançou 0,7\% ante o mês anterior na série com ajuste sazonal, com o índice dessazonalizado em 106,6 pontos (base 2022=100). Na comparação interanual, a indústria avançou 2,7\%; no acumulado do ano, avançou 1,7\%. O avanço mensal reforça a trajetória de alta também observada no acumulado em 12 meses.
+
+\vspace{0.8em}
+{\color{azulpim}\textbf{As quatro leituras (indústria geral)}}
+\begin{center}
+\begin{tabular}{>{\raggedright}p{9.5cm} r}
+\toprule
+\textbf{Leitura} & \textbf{Variação} \\
+\midrule
+Variação mensal (m/m-1, com ajuste sazonal) & +0,7\% \\
+Variação interanual (m/m-12) & +2,7\% \\
+Acumulado no ano & +1,7\% \\
+Acumulado em 12 meses & +0,7\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.3em}
+{\color{azulpim}\textbf{Por seções}}
+\begin{center}
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Seção} & \textbf{m/m-1} & \textbf{Interanual} & \textbf{Ano} & \textbf{12 m} \\
+\midrule
+Indústrias extrativas & +3,1\% & +10,6\% & +9,3\% & +7,3\% \\
+Indústrias de transformação & +0,3\% & +1,2\% & +0,3\% & -0,5\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2em}
+\noindent\begin{minipage}{0.5\linewidth}\centering
+\includegraphics[width=\linewidth]{C:/Users/joaoz/tutorial 5 programação/output/grafico_serie.pdf}
+\end{minipage}\hfill
+\begin{minipage}{0.48\linewidth}\centering
+\includegraphics[width=\linewidth]{C:/Users/joaoz/tutorial 5 programação/output/grafico_categorias.pdf}
+\end{minipage}
+
+\vspace{0.4em}
+{\color{azulpim}\textbf{Destaques entre atividades (interanual)}}\\
+\textbf{Altas:} Fabricação de coque, de produtos derivados do petróleo e de biocombustíveis (+13,3\%); Fabricação de produtos de borracha e de material plástico (+3,8\%); Fabricação de produtos alimentícios (+3,2\%).\\
+\textbf{Baixas:} Fabricação de outros equipamentos de transporte, exceto veículos automotores (-7,9\%); Fabricação de máquinas e equipamentos (-7,0\%); Confecção de artigos do vestuário e acessórios (-6,5\%).
+
+\vspace{0.3em}
+Entre as grandes categorias econômicas (m/m-1, com ajuste sazonal), bens de capital avançou 0,1\%; bens intermediários avançou 1,5\%; bens de consumo duráveis recuou 3,2\%; bens de consumo semiduráveis e não duráveis recuou 0,2\%.
+
+\vfill
+{\color{cinzapim}\footnotesize
+\rule{\linewidth}{0.4pt}\\
+Fonte: IBGE — Pesquisa Industrial Mensal / Produção Física (PIM-PF Brasil), via SIDRA — tabelas 8888 e 8887.
+Extração em 11/06/2026.
+}
+
+\end{document}

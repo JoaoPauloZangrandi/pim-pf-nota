@@ -1,16 +1,61 @@
 # divulgacao.yml — execução agendada perto do horário de divulgação da PIM-PF.
-# Placeholder; preenchido na Etapa 8.
-# Conteúdo final: cron próximo às 09h-10h (UTC ajustado), roda a esteira; em falha,
-# abre uma issue automaticamente.
+# A PIM-PF sai ~09h (BRT, UTC-3); rodamos pouco depois, em dias úteis. Em FALHA, abre uma
+# issue automaticamente para o time não descobrir o problema pelo cliente.
 name: divulgacao
 
 on:
   workflow_dispatch:
-  # schedule:
-  #   - cron: "0 12 * * *"  # ajustar ao calendário de divulgação (UTC)
+  schedule:
+    # 12:30 UTC = 09:30 BRT, de segunda a sexta. Ajuste ao calendário oficial do IBGE.
+    - cron: "30 12 * * 1-5"
+
+permissions:
+  contents: read
+  issues: write
 
 jobs:
-  placeholder:
+  gerar-nota:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Cron de divulgacao a ser implementado na Etapa 8."
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar TeX (latexmk + pacotes da nota)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            latexmk texlive-latex-base texlive-latex-recommended \
+            texlive-fonts-recommended texlive-lang-portuguese
+
+      - name: Instalar dependências Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Gerar a nota (período mais recente)
+        run: python -m pim_report --periodo last
+
+      - name: Publicar artefatos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nota-pim-pf
+          path: |
+            output/*.pdf
+            output/*.html
+            output/pim_report.log
+          if-no-files-found: warn
+
+      - name: Abrir issue em caso de falha
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "Falha na esteira PIM-PF — $(date -u +%Y-%m-%d)" \
+            --body "A execução agendada da esteira falhou. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
