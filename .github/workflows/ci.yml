@@ -1,0 +1,14 @@
+# ci.yml — lint + testes em cada PR. Placeholder; preenchido na Etapa 8.
+# Conteúdo final: setup-python, pip install -e .[dev], ruff check, black --check, pytest.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "CI a ser implementada na Etapa 8."

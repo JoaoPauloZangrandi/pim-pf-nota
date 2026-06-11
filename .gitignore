@@ -1,0 +1,35 @@
+# Artefatos gerados (versionamos apenas a estrutura via .gitkeep)
+data/raw/*
+!data/raw/.gitkeep
+output/*
+!output/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Ambiente virtual
+.venv/
+venv/
+
+# LaTeX (subprodutos de compilacao)
+*.aux
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.out
+*.toc
+# *.log e' subproduto do TeX; mantemos fora do controle de versao
+*.log
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

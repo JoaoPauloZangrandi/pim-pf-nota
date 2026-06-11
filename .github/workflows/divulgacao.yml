@@ -1,0 +1,16 @@
+# divulgacao.yml — execução agendada perto do horário de divulgação da PIM-PF.
+# Placeholder; preenchido na Etapa 8.
+# Conteúdo final: cron próximo às 09h-10h (UTC ajustado), roda a esteira; em falha,
+# abre uma issue automaticamente.
+name: divulgacao
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "0 12 * * *"  # ajustar ao calendário de divulgação (UTC)
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Cron de divulgacao a ser implementado na Etapa 8."
