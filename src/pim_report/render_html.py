@@ -175,3 +175,183 @@ def renderizar_relatorio(
     caminho.write_text(html, encoding="utf-8")
     logger.info("Relatório HTML gerado: %s", caminho)
     return caminho
+
+
+# =========================================================================== #
+# Dossiê — documento único que explica TODO o projeto (Tutorial 5)
+# =========================================================================== #
+REPO_URL = "https://github.com/JoaoPauloZangrandi/pim-pf-nota"
+
+# Mapa: exigência do enunciado -> como foi atendida -> onde no código.
+REQUISITOS = [
+    {
+        "req": "Nota informativa para clientes — visualmente limpa, informativa e sucinta "
+        "(1 página)",
+        "como": "PDF de 1 página com manchete, quadro das 4 leituras, seções, 2 gráficos, "
+        "destaques de atividades e parágrafo de contexto.",
+        "onde": "transform.py · analysis.py · charts.py · render_latex.py · templates/nota.tex.j2",
+    },
+    {
+        "req": "Automatizado: coleta + tratamento + análise num só processo",
+        "como": "Um único comando (python -m pim_report --periodo last) executa a esteira de "
+        "ponta a ponta, sem intervenção manual.",
+        "onde": "pipeline.gerar_nota · __main__.py · sidra_client.py",
+    },
+    {
+        "req": "Documento final em PDF, gerado em LaTeX (padrão interno da consultoria)",
+        "como": "Template Jinja2 (.tex.j2) → .tex preenchido → compilação determinística. Toda a "
+        "nota é LaTeX, como a consultoria usa internamente.",
+        "onde": "render_latex.py · templates/nota.tex.j2",
+    },
+    {
+        "req": "Divulgação ~09h, nota até 10h — cronograma apertado",
+        "como": "Workflow agendado (cron) dispara logo após a divulgação; a esteira roda em "
+        "segundos e publica os artefatos automaticamente.",
+        "onde": ".github/workflows/divulgacao.yml",
+    },
+    {
+        "req": "Minimizar o risco de o código não funcionar no dia",
+        "como": "Timeout + retry, validação de schema, checagem de publicação, cache/degradação, "
+        "testes que forçam erro, CI e abertura automática de issue em falha.",
+        "onde": "sidra_client.py · schema.py · cache.py · pipeline.py · tests/ · workflows/",
+    },
+    {
+        "req": "Decidir o que a nota deve conter (conteúdo mínimo da PIM-PF)",
+        "como": "4 leituras padrão, grandes categorias econômicas, seções (extrativa × "
+        "transformação), destaques de atividades, gráficos e fonte/rodapé.",
+        "onde": "transform.py · analysis.py · templates/*",
+    },
+]
+
+LINKS = [
+    (
+        "PIM-PF — página oficial (metodologia e calendário)",
+        "https://www.ibge.gov.br/estatisticas/economicas/industria/9294-pesquisa-industrial-mensal-producao-fisica-brasil.html",
+    ),
+    ("SIDRA — PIM-PF Brasil", "https://sidra.ibge.gov.br/home/pimpfbr/brasil"),
+    ("API SIDRA", "https://apisidra.ibge.gov.br/"),
+    (
+        "Exemplo de narrativa/contextualização (matéria do IBGE)",
+        "https://agenciadenoticias.ibge.gov.br/agencia-noticias/2012-agencia-de-noticias/noticias/27576-pandemia-faz-producao-industrial-cair-9-1-e-ter-pior-marco-desde-2002",
+    ),
+    (
+        "Metadados oficiais — tabela 8888",
+        "https://servicodados.ibge.gov.br/api/v3/agregados/8888/metadados",
+    ),
+    ("Repositório do projeto (GitHub)", REPO_URL),
+]
+
+TRECHOS = [
+    {
+        "titulo": "Orquestração: try/except/finally no topo + degradação para cache (pipeline.py)",
+        "codigo": (
+            "try:\n"
+            "    try:\n"
+            "        pacote, alvo = ... coletar ao vivo ...\n"
+            "        salvar_bruto(pacote, ...)            # grava o JSON cru de cada execução\n"
+            "    except SidraError as erro:               # API caiu?\n"
+            "        cache = carregar_mais_recente(...)   # usa o cache mais recente\n"
+            "        pacote, de_cache = cache.registros, True\n"
+            "    dados = construir_dados(pacote, ...)\n"
+            "    narrativa = gerar_narrativa(dados)\n"
+            "    pdf  = renderizar_nota(dados, narrativa, graficos, ...)\n"
+            "    html = renderizar_relatorio(dados, narrativa, graficos, ...)\n"
+            "except PimReportError as erro:\n"
+            "    logger.error('Esteira falhou: %s', erro, exc_info=True); raise\n"
+            "finally:\n"
+            "    logger.info('=== Fim da esteira PIM-PF ===')"
+        ),
+    },
+    {
+        "titulo": "Retentativa só em erros transitórios — backoff exponencial (sidra_client.py)",
+        "codigo": (
+            "def _e_transitorio(exc):\n"
+            "    if isinstance(exc, SidraConnectionError): return True\n"
+            "    if isinstance(exc, SidraHTTPError):       return exc.transitorio  # 5xx\n"
+            "    return False\n\n"
+            "Retrying(stop=stop_after_attempt(self.max_tentativas),\n"
+            "         wait=wait_exponential(multiplier=self.espera_inicial, max=...),\n"
+            "         retry=retry_if_exception(_e_transitorio), reraise=True)"
+        ),
+    },
+    {
+        "titulo": "Compilação determinística com fallback latexmk → pdflatex (render_latex.py)",
+        "codigo": (
+            "for cmd in _comandos_candidatos(destino, caminho_tex):  # latexmk, depois pdflatex\n"
+            "    resultado = executar(cmd, cwd=str(destino))\n"
+            "    if resultado.returncode == 0 and caminho_pdf.exists():\n"
+            "        return caminho_pdf\n"
+            "# todos falharam: preserva o .log e levanta erro acionável\n"
+            "raise LatexCompilationError(..., log_path=str(caminho_log), contexto={...})"
+        ),
+    },
+    {
+        "titulo": "Jinja2 para LaTeX: delimitadores que não colidem com as chaves do TeX",
+        "codigo": (
+            "Environment(block_start_string='((*', block_end_string='*))',\n"
+            "            variable_start_string='(((', variable_end_string=')))',\n"
+            "            autoescape=False, undefined=StrictUndefined)\n"
+            "# no template: ((* for s in dados.secoes *)) ((( s.nome|tex ))) & "
+            "((( s.var_mensal|pct|tex )))"
+        ),
+    },
+    {
+        "titulo": "Special Case: mês ainda não publicado (special_cases.py / pipeline.py)",
+        "codigo": (
+            "if periodo != 'last' and periodo > recente:\n"
+            "    snp = PeriodoNaoPublicado(periodo, recente, hoje)\n"
+            "    return Execucao(False, periodo, None, None, False, snp.mensagem())\n"
+            "# -> não gera PDF com mês velho fingindo ser novo"
+        ),
+    },
+]
+
+
+def renderizar_dossie(
+    dados: DadosPim,
+    narrativa: Narrativa,
+    graficos: Graficos,
+    *,
+    dir_saida: Path = config.DIR_OUTPUT,
+    dir_templates: Path = config.DIR_TEMPLATES,
+    pdf_path: Path | None = None,
+) -> Path:
+    """Renderiza ``output/dossie.html`` — documento único que explica TODO o projeto."""
+    exigir_nao_nulo(dados, "dados", operacao="renderizar_dossie")
+    exigir_nao_nulo(narrativa, "narrativa", operacao="renderizar_dossie")
+    exigir_nao_nulo(graficos, "graficos", operacao="renderizar_dossie")
+
+    env = Environment(
+        loader=FileSystemLoader(str(dir_templates)),
+        autoescape=select_autoescape(["html", "xml"]),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    env.filters["pct"] = formatar_pct
+
+    try:
+        template = env.get_template("dossie.html.j2")
+        html = template.render(
+            dados=dados,
+            narrativa=narrativa,
+            img_serie=_data_uri_png(graficos.serie_png),
+            img_categorias=_data_uri_png(graficos.categorias_png),
+            requisitos=REQUISITOS,
+            principios=PRINCIPIOS,
+            modulos=MODULOS,
+            links=LINKS,
+            trechos=TRECHOS,
+            repo_url=REPO_URL,
+            pdf_nome=pdf_path.name if pdf_path else "",
+        )
+    except Exception as erro:
+        raise HtmlRenderError(
+            "Falha ao renderizar o dossiê HTML",
+            contexto={"dir_templates": str(dir_templates)},
+        ) from erro
+
+    dir_saida.mkdir(parents=True, exist_ok=True)
+    caminho = dir_saida / "dossie.html"
+    caminho.write_text(html, encoding="utf-8")
+    logger.info("Dossiê HTML gerado: %s", caminho)
+    return caminho
